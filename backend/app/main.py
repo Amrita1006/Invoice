@@ -37,3 +37,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "InvoiceIQ AI"}
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    return {"message": "OK"}
