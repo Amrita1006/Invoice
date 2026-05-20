@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 import os
 import uuid
 import shutil
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 
 from ..services.pdf_service import split_pdf_to_images
 from ..services.ocr_service import extract_invoice_data
@@ -15,6 +17,25 @@ router = APIRouter()
 UPLOAD_DIR = "uploads"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+MAX_WORKERS = 4
+
+def process_page(page, file_path):
+    """Process a single page - runs in thread pool"""
+    try:
+        invoice_data = extract_invoice_data(page)
+        return {
+            "success": True,
+            "page": page,
+            "file_path": file_path,
+            "data": invoice_data
+        }
+    except Exception as page_error:
+        return {
+            "success": False,
+            "page": page,
+            "error": str(page_error)
+        }
 
 
 @router.post('/upload')
@@ -57,27 +78,13 @@ async def upload_and_extract(file: UploadFile = File(...)):
             # Split PDF into images
             pages = split_pdf_to_images(file_path)
 
-            # OCR each page separately
-            for page in pages:
-
-                try:
-
-                    invoice_data = extract_invoice_data(page)
-
-                    invoices.append({
-                        "success": True,
-                        "page": page,
-                        "file_path": file_path,
-                        "data": invoice_data
-                    })
-
-                except Exception as page_error:
-
-                    invoices.append({
-                        "success": False,
-                        "page": page,
-                        "error": str(page_error)
-                    })
+            # Process pages in parallel using ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                results = list(executor.map(
+                    lambda page: process_page(page, file_path),
+                    pages
+                ))
+            invoices = results
 
         # =========================
         # IMAGE PROCESSING
