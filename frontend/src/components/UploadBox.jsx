@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { uploadInvoice } from '../services/api'
 
 export default function UploadBox({ setInvoices, setLoading }) {
 
@@ -8,20 +8,13 @@ export default function UploadBox({ setInvoices, setLoading }) {
 
         if (!file) return
 
-        const formData = new FormData()
-
-        formData.append('file', file)
-
         try {
 
             setLoading(true)
 
-            const response = await axios.post(
-                '/api/invoices/upload',
-                formData
-            )
+            const response = await uploadInvoice(file)
 
-            setInvoices(response.data.invoices)
+            setInvoices(response.invoices)
 
         } catch (error) {
 
