@@ -29,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(invoice_routes.router, prefix="/api/invoices", tags=["invoices"])
+app.include_router(invoice_routes.router, prefix="/api", tags=["invoices"])
 app.include_router(dashboard_routes.router, prefix="/api/dashboard", tags=["dashboard"])
 
 @app.get("/")
