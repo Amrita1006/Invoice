@@ -11,6 +11,7 @@ import {
   Camera
 } from 'lucide-react';
 import CameraScanner from '../components/CameraScanner';
+import { uploadInvoice, saveInvoice } from '../services/api';
 
 function Upload() {
   const navigate = useNavigate();
@@ -71,48 +72,93 @@ function Upload() {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
-    setUploading(true);
-    setStatus({ type: 'info', message: 'Uploading and extracting data...' });
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch('/api/invoices/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const result = await response.json();
-      
-      if (response.ok && result.success && result.invoices.length > 0) {
-        const successfulInvoices = result.invoices.filter(inv => inv.success);
-        if (successfulInvoices.length > 0) {
-          setExtractedInvoices(successfulInvoices);
-          setCurrentInvoiceIndex(0);
-          setExtractedData({
-            ...successfulInvoices[0].data,
-            file_path: successfulInvoices[0].file_path
+  if (!file) return;
+
+  setUploading(true);
+
+  setStatus({
+    type: 'info',
+    message: 'Uploading and extracting data...'
+  });
+
+  try {
+
+    const result = await uploadInvoice(file);
+
+    if (
+      result.success &&
+      result.invoices &&
+      result.invoices.length > 0
+    ) {
+
+      const successfulInvoices = result.invoices.filter(
+        inv => inv.success
+      );
+
+      if (successfulInvoices.length > 0) {
+
+        setExtractedInvoices(successfulInvoices);
+
+        setCurrentInvoiceIndex(0);
+
+        setExtractedData({
+          ...successfulInvoices[0].data,
+          file_path: successfulInvoices[0].file_path
+        });
+
+        if (successfulInvoices.length === 1) {
+
+          setStatus({
+            type: 'success',
+            message:
+              'Extraction complete! Review and edit your data below.'
           });
-          if (successfulInvoices.length === 1) {
-            setStatus({ type: 'success', message: 'Extraction complete! Review and edit your data below.' });
-          } else {
-            setStatus({ type: 'success', message: `Extracted ${successfulInvoices.length} invoices! Use arrows to navigate between them.` });
-          }
+
         } else {
-          setStatus({ type: 'error', message: 'No invoices could be extracted from the file.' });
+
+          setStatus({
+            type: 'success',
+            message: `Extracted ${successfulInvoices.length} invoices! Use arrows to navigate between them.`
+          });
+
         }
+
       } else {
-        setStatus({ type: 'error', message: result.detail || 'Upload failed. Please try again.' });
+
+        setStatus({
+          type: 'error',
+          message:
+            'No invoices could be extracted from the file.'
+        });
+
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      setStatus({ type: 'error', message: 'Upload failed. Please try again.' });
-    } finally {
-      setUploading(false);
+
+    } else {
+
+      setStatus({
+        type: 'error',
+        message:
+          result.detail || 'Upload failed. Please try again.'
+      });
+
     }
-  };
+
+  } catch (error) {
+
+    console.error('Upload error:', error);
+
+    setStatus({
+      type: 'error',
+      message: 'Upload failed. Please try again.'
+    });
+
+  } finally {
+
+    setUploading(false);
+
+  }
+};
 
   const handleFieldChange = (field, value) => {
     setExtractedData(prev => ({
@@ -148,69 +194,141 @@ function Upload() {
   };
 
   const handleSave = async () => {
-    if (!extractedData) return;
-    
-    setUploading(true);
-    setStatus({ type: 'info', message: 'Saving invoice...' });
 
-    try {
-      const cleanAmount = (val) => {
-        if (typeof val === 'number') return val;
-        if (!val) return 0;
-        return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
-      };
-      
-      const saveData = {
-        invoice_number: extractedData.invoice_number || '',
-        vendor_name: extractedData.vendor_name || '',
-        invoice_date: extractedData.invoice_date || '',
-        gst_number: extractedData.gst_number || '',
-        phone_number: extractedData.phone_number || '',
-        email: extractedData.email || '',
-        total_amount: cleanAmount(extractedData.total_amount),
-        file_path: extractedData.file_path,
-        products: (extractedData.products || []).map(p => ({
-          item_name: p.item_name || '',
-          quantity: String(p.quantity).replace(/[^0-9]/g, '') || '0',
-          amount: cleanAmount(p.amount)
+  if (!extractedData) return;
+
+  setUploading(true);
+
+  setStatus({
+    type: 'info',
+    message: 'Saving invoice...'
+  });
+
+  try {
+
+    const cleanAmount = (val) => {
+
+      if (typeof val === 'number') return val;
+
+      if (!val) return 0;
+
+      return parseFloat(
+        String(val).replace(/[^0-9.]/g, '')
+      ) || 0;
+
+    };
+
+    const saveData = {
+
+      invoice_number:
+        extractedData.invoice_number || '',
+
+      vendor_name:
+        extractedData.vendor_name || '',
+
+      invoice_date:
+        extractedData.invoice_date || '',
+
+      gst_number:
+        extractedData.gst_number || '',
+
+      phone_number:
+        extractedData.phone_number || '',
+
+      email:
+        extractedData.email || '',
+
+      total_amount:
+        cleanAmount(extractedData.total_amount),
+
+      file_path:
+        extractedData.file_path,
+
+      products:
+        (extractedData.products || []).map(p => ({
+
+          item_name:
+            p.item_name || '',
+
+          quantity:
+            String(p.quantity)
+              .replace(/[^0-9]/g, '') || '0',
+
+          amount:
+            cleanAmount(p.amount)
+
         }))
-      };
 
-      const response = await fetch('/api/invoices/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saveData)
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        const remainingInvoices = extractedInvoices.filter((_, idx) => idx !== currentInvoiceIndex);
-        
-        if (remainingInvoices.length > 0) {
-          setExtractedInvoices(remainingInvoices);
-          setCurrentInvoiceIndex(0);
-          setExtractedData({
-            ...remainingInvoices[0].data,
-            file_path: remainingInvoices[0].file_path
-          });
-          setStatus({ type: 'success', message: `Invoice saved! ${remainingInvoices.length} more to save.` });
-        } else {
-          setStatus({ type: 'success', message: 'All invoices saved successfully!' });
-          setTimeout(() => {
-            handleReset();
-          }, 1500);
-        }
+    };
+
+    const result = await saveInvoice(saveData);
+
+    if (result.success) {
+
+      const remainingInvoices =
+        extractedInvoices.filter(
+          (_, idx) => idx !== currentInvoiceIndex
+        );
+
+      if (remainingInvoices.length > 0) {
+
+        setExtractedInvoices(remainingInvoices);
+
+        setCurrentInvoiceIndex(0);
+
+        setExtractedData({
+          ...remainingInvoices[0].data,
+          file_path: remainingInvoices[0].file_path
+        });
+
+        setStatus({
+          type: 'success',
+          message:
+            `Invoice saved! ${remainingInvoices.length} more to save.`
+        });
+
       } else {
-        setStatus({ type: 'error', message: result.detail || 'Failed to save invoice' });
+
+        setStatus({
+          type: 'success',
+          message:
+            'All invoices saved successfully!'
+        });
+
+        setTimeout(() => {
+
+          handleReset();
+
+        }, 1500);
+
       }
-    } catch (error) {
-      console.error('Save error:', error);
-      setStatus({ type: 'error', message: 'Failed to save invoice: ' + error.message });
-    } finally {
-      setUploading(false);
+
+    } else {
+
+      setStatus({
+        type: 'error',
+        message:
+          result.detail || 'Failed to save invoice'
+      });
+
     }
-  };
+
+  } catch (error) {
+
+    console.error('Save error:', error);
+
+    setStatus({
+      type: 'error',
+      message:
+        'Failed to save invoice: ' + error.message
+    });
+
+  } finally {
+
+    setUploading(false);
+
+  }
+};
 
   const handleReset = () => {
     setFile(null);
