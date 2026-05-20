@@ -1,6 +1,6 @@
 import Webcam from 'react-webcam'
 import { useRef, useState } from 'react'
-import axios from 'axios'
+import { uploadInvoice } from '../services/api'
 
 export default function CameraScanner({ setInvoices, setLoading }) {
 
@@ -35,12 +35,9 @@ export default function CameraScanner({ setInvoices, setLoading }) {
                 'scan.jpg'
             )
 
-            const response = await axios.post(
-                '/api/invoices/upload',
-                formData
-            )
+            const response = await uploadInvoice(blob)
 
-            setInvoices(response.data.invoices)
+            setInvoices(response.invoices)
             setShowCamera(false)
 
         } catch (error) {
