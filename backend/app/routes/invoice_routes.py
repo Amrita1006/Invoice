@@ -14,8 +14,7 @@ from ..models.models import Invoice, Product
 
 router = APIRouter()
 
-UPLOAD_DIR = "uploads"
-
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/tmp/invoice-uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MAX_WORKERS = 4

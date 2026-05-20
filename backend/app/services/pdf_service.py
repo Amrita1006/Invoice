@@ -3,7 +3,8 @@ import os
 
 def split_pdf_to_images(pdf_path):
 
-    output_dir = "uploads/split_pages"
+    base_dir = os.environ.get("UPLOAD_DIR", "/tmp/invoice-uploads")
+    output_dir = os.path.join(base_dir, "split_pages")
 
     os.makedirs(output_dir, exist_ok=True)
 
