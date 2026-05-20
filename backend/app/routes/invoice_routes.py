@@ -12,8 +12,7 @@ from ..services.excel_service import generate_invoice_excel
 from ..database.database import get_db
 from ..models.models import Invoice, Product
 
-router = APIRouter()
-
+router = APIRouter(prefix="/invoices")
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/tmp/invoice-uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 

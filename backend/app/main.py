@@ -22,7 +22,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://YOUR-VERCEL-APP.vercel.app"
+        "https://invoice-virid-six.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
